@@ -36,6 +36,28 @@ You need perl version 5.002 or later.
    make install
 
 
+** TODO **
+
+    This cleanup of m@name/..(/|$)@ 
+    needs to be improved by making it clean up m@name/../@
+    or m@(.)/name/..$@ or m@($isrootRE)name/..$@, preserving the
+    leading root indicator. The current approach will end up
+    leaving trailing slashes: /a/b/.. becomes /a/, not /a.
+
+    Add option to regularize() to force '\' or '/' on Win32 (or
+    just leave them be). Currently, the Win32 setting uses '/' by default
+    because there are lots of perl scripts out there that are unixian
+    in nature that need to run under Win32. But, there are some applications
+    of perl under Win32 that 
+
+    (Possibly) add an option to speed things up by using abs_path()
+    instead of cwd().
+
+    (Possibly) alter realpath() to use abs_path() for speed.
+
+    MacOS and VMS beta testing: there have to be some bugs in
+    there.
+
 
 ** Revision History **
 
@@ -253,4 +275,40 @@ Slaymaker.  Thanks Shigio!
 
     Cleanup.  Move history to README, edit POD.
 
+0.84
 
+    Mostly bug fixes to URLs to allow Pod::Html to use us.
+
+0.85
+
+    Cleaned up regularization of m@/name/..@ to actually clean up
+    m@name/..(/|$)@ so as to preserve root-ness. TODO: This cleanup
+    could still be improved by making it clean up m@name/../@
+    or m@(.)/name/..$@ or m@($isrootRE)name/..$@, preserving the
+    leading root indicator. The current approach will end up
+    leaving trailing slashes: /a/b/.. becomes /a/, not /a.
+
+    Fixed rel2abs()'s handling of UNC names when the base (or cwd)
+    is in the top-level shared directory.
+    
+    Noticed that treating the UNC volume specifier (\\server\sharename)
+    as a volume, which prevents security problems like 
+
+       rel2abs( '..\othersharename', '\\server\sharename' ) ;
+
+    Considered calling regularize() in rel2abs() and abs2rel even when
+    they are noops. This would make the behavior a little more complicated,
+    which could be good or bad.
+
+    Cleaned up joindirs() so that it won't introduce extra separators
+    if any of the directory names already have separators in them.
+    Made similar changes elsewhere, too.
+
+    Converted regularize() to a function (it was a subroutine that
+    modified a reference).
+
+    Modified regularize to (1) preserve the trailing separator, if any,
+    and (2) not use the default $sep when combining multiple separators
+    so that we won't introduce a '/' instead of a '\' in Win32 land.
+
+    Converted test suite to t/*.t format from test.pl.

@@ -14,7 +14,7 @@ use strict ;
 BEGIN {
    use Exporter   ();
    use vars       qw($VERSION @ISA @EXPORT_OK);
-   $VERSION       = 0.84;
+   $VERSION       = 0.85;
    @ISA           = qw(Exporter);
    @EXPORT_OK     = qw(setfstype splitpath joinpath splitdirs joindirs realpath abs2rel rel2abs $maxsymlinks $verbose $SL $resolved );
 }
@@ -84,7 +84,7 @@ my $name_sep_parentRE ;
 
 #
 # Matches '..$', '../' after a root
-my $leadingParentRE ;
+my $leading_parentRE ;
 
 #
 # Matches things like '/(./)+' and '^(./)+'
@@ -271,7 +271,7 @@ sub setfstype($;) {
    # the routines that use them are called.
    $basenamesplitRE   = '^(.*)' . $sepRE . '(' . $notsepRE . '*)$' ;
 
-   $leadingParentRE   = '(' . $isrootRE . '?)(?:' . $parentDirRE . $sepRE . ')*(?:' . $parentDirRE . '$)?' ;
+   $leading_parentRE  = '(' . $isrootRE . '?)(?:' . $parentDirRE . $sepRE . ')*(?:' . $parentDirRE . '$)?' ;
    $trailing_sepRE    = '(.)' . $sepRE . $thisDirRE . '?$' ;
 
    $beginning_of_name = '(?:^|' . $isrootRE . '|' . $sepRE . ')' ;
@@ -280,11 +280,11 @@ sub setfstype($;) {
       '(' . $beginning_of_name . ')(?:' . $thisDirRE . $sepRE . ')+';
 
    $name_sep_parentRE = 
-      $beginning_of_name
+      '(' . $beginning_of_name . ')'
       . '(?!(?:' . $thisDirRE . '|' . $parentDirRE . ')' . $sepRE . ')'
       . $notsepRE . '+' 
       . $sepRE . $parentDirRE 
-      . '(?=' . $sepRE . '|$)'
+      . '(?:' . $sepRE . '|$)'
       ;
 
    if ( $verbose ) {
@@ -351,14 +351,34 @@ setfstype( $^O ) ;
 #
 sub splitpath {
    my( $path, $nofile )= @_ ;
+   my( $volume, $directory, $file ) ;
    if ( $fstype ne 'VMS' && $fstype ne 'URL' && $nofile ) {
-      $path =~ m/($volumeRE)(.*)()$/ ;
-      return ( $1, $2, $3 ) ;
+      $path =~ m/($volumeRE)(.*)$/ ;
+      $volume   = $1 ;
+      $directory= $2 ;
+      $file     = '' ;
    }
    else {
       $path =~ m/($volumeRE)($directoryRE)(.*)$/ ;
-      return ( $1, $2, $3 ) ;
+      $volume   = $1 ;
+      $directory= $2 ;
+      $file     = $3 ;
    }
+
+   # For Win32 UNC, force the directory portion to be non-empty. This is
+   # because all UNC names are absolute, even if there's no trailing separator
+   # after the sharename.
+   #
+   # This is a bit of a hack, necesitated by the implementation of $isrootRE,
+   # which is only applied to the directory portion.
+   #
+   # A better long term solution might be to make the isroot test a member 
+   # function in the future, object-oriented version of this.
+   #
+   $directory = $1
+     if ( $fstype eq 'Win32' && $volume =~ /^($sepRE)$sepRE/ && $directory eq '' ) ;
+
+   return ( $volume, $directory, $file ) ;
 }
 
 
@@ -398,7 +418,7 @@ sub joinpath($;$;$;) {
       # Add trailing separator to directory names that require it and
       # need it.  URLs always require it if there are any directory
       # components.
-      $directory.= $sep
+      $directory .= $sep
          if (  $directory ne '' 
             && ( $fstype eq 'URL' || $filename ne '' )
             && $directory !~ m/$sepRE$/ 
@@ -408,7 +428,7 @@ sub joinpath($;$;$;) {
       # names that lack it and need it.
       # Note that if a URL volume is a scheme only (ends in ':'),
       # we don't require a separator: it's a relative URL.
-      $volume.= $sep
+      $volume .= $sep
          if (  (  ( $fstype eq 'Win32' && $volume =~ m#^$sepRE{2}# )
                || ( $fstype eq 'URL'   && $volume =~ m#[^:/]$#     )
                )
@@ -467,17 +487,45 @@ sub splitdirs($;) {
 # joindirs: Joins an array of directory names in to a string, adding
 # OS-specific delimiters, like '[' and ']' for VMS.
 #
+# Note that empty strings '' are no different then non-empty strings,
+# but that undefined strings are skipped by this algorithm.
+#
+# This is done the hard way to preserve separators that are already
+# present in any of the directory names.
+#
+# Could this be made faster by using a join() followed 
+# by s/($sepRE)$sepRE+/$1/g?
+#
 # Interface:
 #     i) array of directory names
 #     o) string representation of directory path
 #
 sub joindirs {
-   my( $directorypath )= join( $sep, @_ ) ;
+   my $directory_path ;
 
-   $directorypath = join( '', '[', $directorypath, ']' )
+   $directory_path = shift
+      while ( ! defined( $directory_path ) && @_ ) ;
+
+   if ( ! defined( $directory_path ) ) {
+      $directory_path = '' ;
+   }
+   else {
+      local $_ ;
+
+      for ( @_ ) {
+        next if ( ! defined( $_ ) ) ;
+
+        $directory_path .= $sep
+           if ( $directory_path !~ /$sepRE$/ && ! /^$sepRE/ ) ;
+
+        $directory_path .= $_ ;
+      }
+   }
+
+   $directory_path = join( '', '[', $directory_path, ']' )
       if ( $fstype eq 'VMS' ) ;
 
-   return $directorypath ;
+   return $directory_path ;
 }
 
 
@@ -494,12 +542,14 @@ $resolved = '';
 #
 #       Note: this implementation is based 4.4BSD version realpath(3).
 #
+# TODO: Speed up by using Cwd::abs_path()?
+#
 sub realpath($;) {
     ($resolved) = @_;
     my($backdir) = cwd();
     my($dirname, $basename, $links, $reg);
 
-    regularize($resolved);
+    $resolved = regularize($resolved);
 LOOP:
     {
         #
@@ -586,7 +636,7 @@ sub abs2rel($;$;) {
     my( $base_volume, $base_directory, $base_file )= splitpath( $base,'nofile');
     # check for a filename, since the nofile parameter does not work for OSs
     # like VMS that have explicit delimiters between the dir and file portions
-    warn( "rel2abs: filename '$base_file' passed in \$base" )
+    warn( "abs2rel: filename '$base_file' passed in \$base" )
        if ( $base_file ne '' && $verbose ) ;
 
     if ( $base_directory !~ /$isrootRE/ ) {
@@ -599,8 +649,8 @@ sub abs2rel($;$;) {
     }
 
 #print( "[$path_directory,$base_directory]\n" ) ;
-    regularize($path_directory);
-    regularize($base_directory);
+    $path_directory = regularize( $path_directory );
+    $base_directory = regularize( $base_directory );
 #print( "[$path_directory,$base_directory]\n" ) ;
     # Now, remove all leading components that are the same, so 'name/a'
     # 'name/b' become 'a' and 'b'.
@@ -625,6 +675,9 @@ sub abs2rel($;$;) {
             shift @basechunks ;
         }
     }
+
+    # No need to use joindirs() here, since we know that the arrays
+    # are well formed.
     $path_directory= join( $sep, @pathchunks );
     $base_directory= join( $sep, @basechunks );
 #print( "[$path_directory,$base_directory]\n" ) ;
@@ -642,24 +695,18 @@ sub abs2rel($;$;) {
     # $base_directory now contains the directories the resulting relative path 
     # must ascend out of before it can descend to $path_directory.  So, 
     # replace all names with $parentDir
-    $base_directory =~ s/$notsepRE+/$parentDir/g;
+    $base_directory =~ s/$notsepRE+/$parentDir/g ;
 #print( "[$base_directory]\n" ) ;
 
     # Glue the two together, using a separator if necessary, and preventing an
     # empty result.
     if ( $path_directory ne '' && $base_directory ne '' ) {
-        $path_directory = $base_directory . $sep . $path_directory;
+        $path_directory = "$base_directory$sep$path_directory" ;
     } else {
-        $path_directory = $base_directory . $path_directory;
+        $path_directory = "$base_directory$path_directory" ;
     }
 
-#print( "[$path_directory]\n" ) ;
-    # if there is no directory spec and a file name, don't regularize,
-    # since that would result in a '.', which leads to a './file', which
-    # isn't as clean as just plain 'file'
-    regularize($path_directory)
-        if ( $path_directory ne '' || $path_file eq '' ) ;
-#print( "[$path_directory]\n" ) ;
+    $path_directory = regularize( $path_directory ) ;
 
     # relative URLs should have no name in the volume, only a scheme.
     $path_volume=~ s#/.*##
@@ -695,7 +742,7 @@ sub rel2abs($;$;) {
         if ( $path_volume ne '' && $verbose ) ;
 
     $base = cwd()
-        if ( $base eq '' ) ;
+        if ( !defined( $base ) || $base eq '' ) ;
 
     my( $base_volume, $base_directory, $base_file )= splitpath( $base, 'nofile' ) ;
     # check for a filename, since the nofile parameter does not work for OSs
@@ -712,12 +759,19 @@ sub rel2abs($;$;) {
         $base_directory = join( '', $cw_directory, $sep, $base_directory ) ;
     }
 
-    regularize( $path_directory );
-    regularize( $base_directory );
+    $path_directory = regularize( $path_directory );
+    $base_directory = regularize( $base_directory );
 
-    my( $result_directory ) = $base_directory . $sep . $path_directory ;
+    my $result_directory ;
+    # Avoid using a separator if either directory component is empty.
+    if ( $base_directory ne '' && $path_directory ne '' ) {
+        $result_directory= joindirs( $base_directory, $path_directory ) ;
+    }
+    else {
+        $result_directory= "$base_directory$path_directory" ;
+    }
 
-    regularize( $result_directory );
+    $result_directory = regularize( $result_directory );
 
     return joinpath( $base_volume, $result_directory, $path_file ) ;
 }
@@ -732,29 +786,46 @@ sub rel2abs($;$;) {
 #    under Win32, or '.' in filenames under VMS.
 #
 sub regularize {
-    my( $in )= \$_[ 0 ] ;
+    my( $in )= $_[ 0 ] ;
 
     # Combine idempotent separators.  Do this first so all other REs only
-    # need to match one separator.
-    $$in =~ s/$sepRE+/$sep/g
+    # need to match one separator. Use the first sep found instead of
+    # sepRE to preserve slashes on Win32.
+    $in =~ s/($sepRE)$sepRE+/$1/g
         if ( $idempotent ) ;
 
-    # Delete all occurences of '/name/..'.  This is done with a while
-    # loop to get rid of things like '/name1/name2/../..'.
-    while ($$in =~ s/$name_sep_parentRE//g) {}
+    # We do this after deleting redundant separators in order to be consistent.
+    # If a Win32 path ended in \/, we want to be sure that the \ is returned,
+    # no the /.
+    $in =~ /($sepRE)$sepRE*$/ ;
+    my $trailing_sep = defined( $1 ) ? $1 : '' ;
+
+    # Delete all occurences of 'name/..(/|$)'.  This is done with a while
+    # loop to get rid of things like 'name1/name2/../..'. We chose the pattern
+    # name/../ as the target instead of /name/.. so as to preserve 'rootness'.
+    while ($in =~ s/$name_sep_parentRE/$1/g) {}
    
     # Get rid of ./ in '^./' and '/./'
-    $$in =~ s/$dot_sep_etcRE/$1/g ;
+    $in =~ s/$dot_sep_etcRE/$1/g ;
 
     # Get rid of trailing '/' and '/.' unless it would leave an empty string
-    $$in =~ s/$trailing_sepRE/$1/ ;
+    $in =~ s/$trailing_sepRE/$1/ ;
 
     # Get rid of '../' constructs from absolute paths
-    $$in =~ s/$leadingParentRE/$1/
-      if ( $$in =~ /$isrootRE/ ) ;
+    $in =~ s/$leading_parentRE/$1/
+      if ( $in =~ /$isrootRE/ ) ;
 
-    # Default to current directory if it's now empty.
-    $$in = $thisDir if $_[0] eq '' ;
+#    # Default to current directory if it's now empty.
+#    $in = $thisDir if $_[0] eq '' ;
+#
+    # Restore trailing separator if it was lost. We do this to preserve
+    # the 'dir-ness' of the path: paths that ended in a separator on entry
+    # should leave with one in case the caller is using trailing slashes to
+    # indicate paths to directories.
+    $in .= $trailing_sep
+        if ( $trailing_sep ne '' && $in !~ /$sepRE$/ ) ;
+
+    return $in ;
 }
 
 1;
@@ -976,7 +1047,7 @@ To be written...
 
 To be written...
 
-Note that joinpath( splitpath( $path ) ) usually yields path.  URLs
+Note that C<joinpath( splitpath( $path ) )> usually yields path.  URLs
 with directory components ending in '/.' or '/..' will be fixed 
 up to end in '/./' and '/../'.
 
