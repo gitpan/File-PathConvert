@@ -1,8 +1,8 @@
 ----------------------------------------------------------------------------
 
-PathConvert module 0.2 for perl version5
+PathConvert module 0.3 for perl version5
 
-					Shigio Yamaguchi	3-Sep-1997
+					Shigio Yamaguchi	9-Jan-1997
 
 ----------------------------------------------------------------------------
 1. Introduction
@@ -69,9 +69,29 @@ MANIFEST	... file list
 		README	- Mail address changed.
 			- History added.
 
+9-Jan-1998	version 0.3
+
+		PathConvert.pm
+			- fixed the statment of online manual.
+
+		Following useful modifications were submitted by Jesse N. Glick.
+
+		* using $VERSION, to placate CPAN, Exporter, MakeMaker, etc.
+		* exporting package variables, all of which seem to be designed
+		  for possible customization (or retrieval of info in the case
+		  of $resolved)
+		* prototyping public functions (those extra semicolons prevent
+		  e.g. CPerl mode from thinking `$' escapes the following `)'
+		  and messing up Emacs)
+		* using standard indented format for literal program examples;
+		  use of .br is nonstandard and will not work on anything but
+		  nroff/troff (e.g. pod2html)
+		* including suggested use of $resolved in SYNOPSIS
+		* putting more useful information in the warning messages
+
 5. Copyright
 
-Copyright (c) 1996, 1997 Shigio Yamaguchi. All rights reserved.
+Copyright (c) 1996, 1997, 1998 Shigio Yamaguchi. All rights reserved.
 This program is free software; you can redistribute it and/or
 modify it under the same terms as Perl itself.
 

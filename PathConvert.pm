@@ -1,18 +1,19 @@
 #
-# Copyright (c) 1996, 1997 Shigio Yamaguchi. All rights reserved.
+# Copyright (c) 1996, 1997, 1998 Shigio Yamaguchi. All rights reserved.
 # This program is free software; you can redistribute it and/or
 # modify it under the same terms as Perl itself.
 #
-#	File::PathConvert.pm	version 0.2
+#	File::PathConvert.pm
 #
-#				3-Sep-1997 Shigio Yamaguchi
+#				9-Jan-1998 Shigio Yamaguchi
 #
 package File::PathConvert;
+$VERSION = '0.3';
 
 require 5.002;
 require Exporter;
 @ISA = qw(Exporter);
-@EXPORT_OK = qw(realpath abs2rel rel2abs);
+@EXPORT_OK = qw(realpath abs2rel rel2abs $maxsymlinks $verbose $SL $resolved);
 use Cwd;
 #
 # instant configration
@@ -33,7 +34,7 @@ $SL = '/';			# separator
 #
 #	Note: this implementation is based 4.4BSD version realpath(3).
 #
-sub realpath {
+sub realpath($;) {
     ($resolved) = @_;
     my($backdir) = cwd();
     my($dirname, $basename, $links, $reg);
@@ -51,7 +52,7 @@ LOOP:
 	    $dirname = $SL if (!$dirname);
 	    $resolved = $dirname;
 	    unless (chdir($dirname)) {
-		warn("realpath: chdir($dirname) failed.") if $verbose;
+		warn("realpath: chdir($dirname) failed: $! (in ${\cwd()}).") if $verbose;
 		chdir($backdir);
 		return undef;
 	    }
@@ -66,20 +67,20 @@ LOOP:
 	if ($basename) {
 	    if (-l $basename) {
 		unless ($resolved = readlink($basename)) {
-		    warn("realpath: readlink($basename) failed.") if $verbose;
+		    warn("realpath: readlink($basename) failed: $! (in ${\cwd()}).") if $verbose;
 		    chdir($backdir);
 		    return undef;
 		}
 		$basename = '';
 		if (++$links > $maxsymlinks) {
-		    warn("realpath: too many symbolic links.") if $verbose;
+		    warn("realpath: too many symbolic links: $links.") if $verbose;
 		    chdir($backdir);
 		    return undef;
 		}
 		redo LOOP;
 	    } elsif (-d _) {
 		unless (chdir($basename)) {
-		    warn("realpath: chdir($basename) failed.") if $verbose;
+		    warn("realpath: chdir($basename) failed: $! (in ${\cwd()}).") if $verbose;
 		    chdir($backdir);
 		    return undef;
 		}
@@ -99,7 +100,7 @@ LOOP:
     return $resolved;
 }
 #
-# abs2rel: make a relative path from an absolute path
+# abs2rel: make a relative pathname from an absolute pathname
 #
 # Interface:
 #	i)	$path	absolute path(needed)
@@ -108,7 +109,7 @@ LOOP:
 #
 #	Note:	abs2rel doesn't check whether the specified path exist or not.
 #
-sub abs2rel {
+sub abs2rel($;$;) {
     my($path, $base) = @_;
     my($reg, $common);
 
@@ -146,7 +147,7 @@ sub abs2rel {
 }
 
 #
-# rel2abs: make an absolute path from a relative path
+# rel2abs: make an absolute pathname from a relative pathname
 #
 # Interface:
 #	i)	$path	relative path (needed)
@@ -155,7 +156,7 @@ sub abs2rel {
 #
 #	Note:	rel2abs doesn't check whether the specified path exist or not.
 #
-sub rel2abs {
+sub rel2abs($;$;) {
     my($path, $base) = @_;
     my($reg);
 
@@ -226,7 +227,7 @@ __END__
 
 =head1 NAME
 
-realpath - make an canonicalized absolute path name
+realpath - make a canonicalized absolute path name
 
 abs2rel - make a relative path from an absolute path
 
@@ -234,17 +235,18 @@ rel2abs - make an absolute path from a relative path
 
 =head1 SYNOPSIS
 
-C<use File::PathConvert qw(realpath abs2rel rel2abs);>
+    use File::PathConvert qw(realpath abs2rel rel2abs);
 
-C<$path = realpath($path);>
+    $path = realpath($path);
 
-C<$path = abs2rel($path);>
-.br
-C<$path = abs2rel($path, $base);>
+    $path = abs2rel($path);
+    $path = abs2rel($path, $base);
 
-C<$path = rel2abs($path);>
-.br
-C<$path = rel2abs($path, $base);>
+    $path = rel2abs($path);
+    $path = rel2abs($path, $base);
+
+    use File::PathConvert qw($resolved);
+    $path = realpath($path) || die "resolution stopped at $resolved";
 
 =head1 DESCRIPTION
 
@@ -254,40 +256,41 @@ The PathConvert module provides three functions.
 
 =item realpath
 
-C<realpath> make a canonicalized absolute pathname.
-The C<realpath> resolves all symbolic links, extra ``/''
-characters and references to /./ and /../ in the path.
-The C<realpath> will resolve both absolute and relative paths.
-C<realpath> return resolved name on success else undef and set valiable
-$File::PathConvert::resolved to pathname which caused the problem.
+C<realpath> makes a canonicalized absolute pathname and
+resolves all symbolic links, extra ``/'' characters, and references
+to /./ and /../ in the path.
+C<realpath> resolves both absolute and relative paths.
+It returns the resolved name on success, otherwise it returns undef
+and sets the valiable C<$File::PathConvert::resolved> to the pathname
+that caused the problem.
 
 All but the last component of the path must exist.
 
-This implementation based on 4.4BSD realpath(3).
+This implementation is based on 4.4BSD realpath(3).
 
 =item abs2rel
 
-C<abs2rel> make a relative path from an absolute path.
-By default, the base is current directory.
-If you specify second parameter, it's assumed the base.
+C<abs2rel> makes a relative path name from an absolute path name.
+By default, the base is the current directory.
+If you specify a second parameter, it's assumed to be the base.
 
-Returned path may include symbolic links.
-C<abs2rel> doesn't check whether any path exist or not.
+The returned path may include symbolic links.
+C<abs2rel> doesn't check whether or not any path exists.
 
 =item rel2abs
 
-C<rel2abs> make a absolute path from an relative path.
-By default, the base directory is current directory.
-If you specify second parameter, it's assumed the base.
+C<rel2abs> makes an absolute path name from a relative path name.
+By default, the base directory is the current directory.
+If you specify a second parameter, it's assumed to be the base.
 
-Returned path may include symbolic links.
-C<abs2rel> doesn't check whether any path exist or not.
+The returned path may include symbolic links.
+C<abs2rel> doesn't check whether or not any path exists.
 
 =head1 EXAMPLES
 
 =item realpath
 
-    If '/sys' is symbolic link to '/usr/src/sys',
+    If '/sys' is a symbolic link to '/usr/src/sys':
 
     chdir('/usr');
     $path = realpath('../sys/kern');
@@ -296,7 +299,7 @@ or in anywhere ...
 
     $path = realpath('/sys/kern');
 
-would yield
+yields:
 
     $path eq '/usr/src/sys/kern'
 
@@ -309,7 +312,7 @@ or in anywhere ...
 
     $path = abs2rel('/usr/src/sys', '/usr/local/lib');
 
-would yield
+yields:
 
     $path eq '../../src/sys'
 
@@ -318,35 +321,10 @@ Similarly,
     $path1 = abs2rel('/usr/src/sys', '/usr');
     $path2 = abs2rel('/usr/src/sys', '/usr/src/sys');
 
-would yield
+yields:
 
     $path1 eq 'src/sys'
     $path2 eq '.'
-
-If the base directory includes symbolic links, abs2rel produce wrong path.
-For example, '/sys' is a symbolic link to '/usr/src/sys',
-
-    $path = abs2rel('/usr/local/lib', '/sys');
-
-would yield
-
-    $path eq '../usr/local/lib'		# It's wrong!!
-
-You should convert the base directory into a real path in advance.
-
-    $path = abs2rel('/sys/kern', realpath('/sys'));
-
-would yield
-
-    $path eq '../../../sys/kern'	# It's correct but ...
-
-It's correct but a little redundant. If you wish get a simple
-answer 'kern', do the following.
-
-    $path = abs2rel(realpath('/sys/kern'), realpath('/sys'));
-
-realpath() make the result correct but don't forget realpath require
-that all but the last component of the path exist.
 
 =item rel2abs
 
@@ -357,7 +335,7 @@ or in anywhere ...
 
     $path = rel2abs('../../src/sys', '/usr/local/lib');
 
-would yield
+yields:
 
     $path eq '/usr/src/sys'
 
@@ -366,11 +344,39 @@ Similarly,
     $path = rel2abs('src/sys', '/usr');
     $path = rel2abs('.', '/usr/src/sys');
 
-would yield
+yields:
 
     $path eq '/usr/src/sys'
 
 =back
+
+=head1 BUGS
+
+If the base directory includes symbolic links, C<abs2rel> produces the
+wrong path.
+For example, if '/sys' is a symbolic link to '/usr/src/sys',
+
+    $path = abs2rel('/usr/local/lib', '/sys');
+
+yields:
+
+    $path eq '../usr/local/lib'		# It's wrong!!
+
+You should convert the base directory into a real path in advance.
+
+    $path = abs2rel('/sys/kern', realpath('/sys'));
+
+yields:
+
+    $path eq '../../../sys/kern'	# It's correct but ...
+
+That is correct, but a little redundant. If you wish get the simple
+answer 'kern', do the following.
+
+    $path = abs2rel(realpath('/sys/kern'), realpath('/sys'));
+
+C<realpath> assures correct result, but don't forget that C<realpath>
+requires that all but the last component of the path exist.
 
 =head1 AUTHOR
 
