@@ -29,6 +29,9 @@ sub print_error($;$;) {
 [ 'Win32', 'file',                                     '',                           '',             'file'       ],
 [ 'Win32', '\\d1/d2\\d3/',                             '',                           '\\d1/d2\\d3/', ''           ],
 [ 'Win32', 'd1/d2\\d3/',                               '',                           'd1/d2\\d3/',   ''           ],
+[ 'Win32', '\\d1/d2\\d3/.',                         '',                           '\\d1/d2\\d3/.', ''       ],
+[ 'Win32', '\\d1/d2\\d3/..',                         '',                           '\\d1/d2\\d3/..', ''       ],
+[ 'Win32', '\\d1/d2\\d3/.file',                         '',                           '\\d1/d2\\d3/', '.file'       ],
 [ 'Win32', '\\d1/d2\\d3/file',                         '',                           '\\d1/d2\\d3/', 'file'       ],
 [ 'Win32', 'd1/d2\\d3/file',                           '',                           'd1/d2\\d3/',   'file'       ],
 [ 'Win32', 'C:\\d1/d2\\d3/',                           'C:',                         '\\d1/d2\\d3/', ''           ],
@@ -51,8 +54,11 @@ sub print_error($;$;) {
 [ 'VMS',   'node::volume:[d1.d2.d3]file',              'node::volume:',              '[d1.d2.d3]',   'file'       ],
 [ 'VMS',   'node"access_spec"::volume:[d1.d2.d3]',     'node"access_spec"::volume:', '[d1.d2.d3]',   ''           ],
 [ 'VMS',   'node"access_spec"::volume:[d1.d2.d3]file', 'node"access_spec"::volume:', '[d1.d2.d3]',   'file'       ],
+
 [ 'URL',   'file',                                     '',                           '',             'file'       ],
 [ 'URL',   '/d1/d2/d3/',                               '',                           '/d1/d2/d3/',   ''           ],
+[ 'URL',   '/d1/d2/d3/.',                               '',                           '/d1/d2/d3/.',   '', '/d1/d2/d3/./'         ],
+[ 'URL',   '/d1/d2/d3/..',                               '',                           '/d1/d2/d3/..',   '', '/d1/d2/d3/../'         ],
 [ 'URL',   'd1/d2/d3/',                                '',                           'd1/d2/d3/',    ''           ],
 [ 'URL',   '/d1/d2/d3/file',                           '',                           '/d1/d2/d3/',   'file'       ],
 [ 'URL',   'd1/d2/d3/file',                            '',                           'd1/d2/d3/',    'file'       ],
@@ -70,7 +76,11 @@ sub print_error($;$;) {
 [ 'URL',   'http://a.b.com/d1/d2/d3/file',             'http://a.b.com',             '/d1/d2/d3/',   'file'       ],
 [ 'URL',   'http://a.b.com/../../d1/',                 'http://a.b.com',             '/../../d1/',   ''           ],
 [ 'URL',   'http://a.b.com/././d1/',                   'http://a.b.com',             '/././d1/',     ''           ],
+[ 'URL',   'http:file#target',                          'http:',                      '',             'file#target' ],
 [ 'URL',   'http:file?query',                          'http:',                      '',             'file?query' ],
+[ 'URL',   'http:/d1/d2/d3/#target',                    'http:',                      '/d1/d2/d3/',   '#target'     ],
+[ 'URL',   'http:/d1/d2/d3/.#target',                    'http:',                      '/d1/d2/d3/.',   '#target', 'http:/d1/d2/d3/./#target'    ],
+[ 'URL',   'http:/d1/d2/d3/..#target',                    'http:',                      '/d1/d2/d3/..',   '#target', 'http:/d1/d2/d3/../#target'    ],
 [ 'URL',   'http:/d1/d2/d3/?query',                    'http:',                      '/d1/d2/d3/',   '?query'     ],
 [ 'URL',   'http:d1/d2/d3/?query',                     'http:',                      'd1/d2/d3/',    '?query'     ],
 [ 'URL',   'http:/d1/d2/d3/file?query',                'http:',                      '/d1/d2/d3/',   'file?query' ],
@@ -81,11 +91,13 @@ sub print_error($;$;) {
 [ 'URL',   'http://a.b.com/d1/d2/d3/?query',           'http://a.b.com',             '/d1/d2/d3/',   '?query'     ],
 [ 'URL',   'http://a.b.com/d1/d2/d3/file?query',       'http://a.b.com',             '/d1/d2/d3/',   'file?query' ],
 [ 'URL',   'http://a.b.com/../../d1/?query',           'http://a.b.com',             '/../../d1/',   '?query'     ],
-[ 'URL',   'http://a.b.com/././d1/?query',             'http://a.b.com',             '/././d1/',     '?query'     ],
+
 [ 'other', 'file',                                     '',                           '',             'file'       ],
 [ 'other', '/d1/d2/d3/',                               '',                           '/d1/d2/d3/',   ''           ],
 [ 'other', 'd1/d2/d3/',                                '',                           'd1/d2/d3/',    ''           ],
-[ 'other', '/d1/d2/d3/file',                           '',                           '/d1/d2/d3/',   'file'       ],
+[ 'other', '/d1/d2/d3/.',                           '',                           '/d1/d2/d3/.',   ''       ],
+[ 'other', '/d1/d2/d3/..',                           '',                           '/d1/d2/d3/..',   ''       ],
+[ 'other', '/d1/d2/d3/.file',                           '',                           '/d1/d2/d3/',   '.file'       ],
 [ 'other', 'd1/d2/d3/file',                            '',                           'd1/d2/d3/',    'file'       ],
 [ 'other', '/../../d1/',                               '',                           '/../../d1/',   ''           ],
 [ 'other', '/././d1/',                                 '',                           '/././d1/',     ''           ],
@@ -98,6 +110,9 @@ for( $i= 0; $i <= $#data; ++$i ) {
         $volume_out   = $data[ $i ][ 2 ] ;
         $directory_out= $data[ $i ][ 3 ] ;
         $filename_out = $data[ $i ][ 4 ] ;
+        $expected_out = $data[ $i ][ 5 ] ;
+        $expected_out = $in
+           if ( ! defined( $expected_out ) ) ;
 
         if ( $fsspec ne $oldfsspec ) {
             setfstype( $fsspec ) ;
@@ -116,7 +131,7 @@ for( $i= 0; $i <= $#data; ++$i ) {
         }
         print ".";
         my( $out )= joinpath( $volume, $directory, $filename ) ;
-        if ( $out ne $in ) {
+        if ( $out ne $expected_out ) {
                 print_error( 
 "'$out'= joinpath( '$volume', '$directory', '$filename' ) ; # for '$fsspec'", 
 "'$in'"
@@ -236,42 +251,65 @@ for( $i= 0; $i <= $#data; ++$i ) {
 #$current = '/t1/t2/t3';
 @data = (
     # OS       INPUT                      BASE          OUTPUT                
-    [ 'Win32', '/t1/t2/t3',               '/t1/t2/t3',  '.'                    ],  
-    [ 'Win32', '/t1/t2/t4',               '/t1/t2/t3',  '../t4'                ],  
-    [ 'Win32', '/t1/t2',                  '/t1/t2/t3',  '..'                   ],  
-    [ 'Win32', '/t1/t2/t3/t4',            '/t1/t2/t3',  't4'                   ],  
-    [ 'Win32', '/t4/t5/t6',               '/t1/t2/t3',  '../../../t4/t5/t6'    ],  
-    [ 'Win32', '../t4',                   '/t1/t2/t3',  '../t4'                ],  
-    [ 'Win32', '/',                       '/t1/t2/t3',  '../../..'             ],  
-    [ 'Win32', '///',                     '/t1/t2/t3',  '../../..'             ],  
-    [ 'Win32', '/.',                      '/t1/t2/t3',  '../../..'             ],  
-    [ 'Win32', '/./',                     '/t1/t2/t3',  '../../..'             ],  
-    [ 'Win32', '/../',                    '/t1/t2/t3',  '../../..'             ],  
-    [ 'Win32', '/../../../..',            '/t1/t2/t3',  '../../..'             ],  
-    [ 'Win32', '/..a/..b/..c/..',         '/t1/t2/t3',  '../../../..a/..b'     ],  
-    [ 'Win32', '/..\\/..\\/..\\/..',      '/t1/t2/t3',  '../../..'             ],  
-    [ 'Win32', 't1',                      '/t1/t2/t3',  't1'                   ],  
-    [ 'Win32', '.',                       '/t1/t2/t3',  '.'                    ],  
-    [ 'Win32', '\\\\a\\b/t1/t2/t4',       '/t1/t2/t3',  '\\\\a\\b/../t4'       ],  
-    [ 'Win32', '//a\\b/t1/t2/t4',         '/t1/t2/t3',  '//a\\b/../t4'         ],  
-    [ 'VMS',   'node::volume:[t1.t2.t3]', '[t1.t2.t3]',  'node::volume:'       ],
-    [ 'VMS',   'node::volume:[t1.t2.t4]', '[t1.t2.t3]',  'node::volume:[.-.t4]'],
-    [ 'other', '/t1/t2/t3',               '/t1/t2/t3',  '.'                    ],  
-    [ 'other', '/t1/t2/t4',               '/t1/t2/t3',  '../t4'                ],  
-    [ 'other', '/t1/t2',                  '/t1/t2/t3',  '..'                   ],  
-    [ 'other', '/t1/t2/t3/t4',            '/t1/t2/t3',  't4'                   ],  
-    [ 'other', '/t4/t5/t6',               '/t1/t2/t3',  '../../../t4/t5/t6'    ],  
-    [ 'other', '../t4',                   '/t1/t2/t3',  '../t4'                ],  
-    [ 'other', '/',                       '/t1/t2/t3',  '../../..'             ],  
-    [ 'other', '///',                     '/t1/t2/t3',  '../../..'             ],  
-    [ 'other', '/.',                      '/t1/t2/t3',  '../../..'             ],  
-    [ 'other', '/./',                     '/t1/t2/t3',  '../../..'             ],  
-    [ 'other', '/../',                    '/t1/t2/t3',  '../../..'             ],  
-    [ 'other', '/../../../..',            '/t1/t2/t3',  '../../..'             ],  
-    [ 'other', '/..\\/..\\/..\\/..',      '/t1/t2/t3',  '../../../..\\/..\\'   ],  
-    [ 'other', '/..a/..b/..c/..',         '/t1/t2/t3',  '../../../..a/..b'     ],  
-    [ 'other', 't1',                      '/t1/t2/t3',  't1'                   ],  
-    [ 'other', '.',                       '/t1/t2/t3',  '.'                    ]   
+[ 'Win32', '/t1/t2/t3',               '/t1/t2/t3',  '.'                    ],  
+[ 'Win32', '/t1/t2/t4',               '/t1/t2/t3',  '../t4'                ],  
+[ 'Win32', '/t1/t2',                  '/t1/t2/t3',  '..'                   ],  
+[ 'Win32', '/t1/t2/t3/t4',            '/t1/t2/t3',  't4'                   ],  
+[ 'Win32', '/t4/t5/t6',               '/t1/t2/t3',  '../../../t4/t5/t6'    ],  
+[ 'Win32', '../t4',                   '/t1/t2/t3',  '../t4'                ],  
+[ 'Win32', '/',                       '/t1/t2/t3',  '../../..'             ],  
+[ 'Win32', '///',                     '/t1/t2/t3',  '../../..'             ],  
+[ 'Win32', '/.',                      '/t1/t2/t3',  '../../..'             ],  
+[ 'Win32', '/./',                     '/t1/t2/t3',  '../../..'             ],  
+[ 'Win32', '/../',                    '/t1/t2/t3',  '../../..'             ],  
+[ 'Win32', '/../../../..',            '/t1/t2/t3',  '../../..'             ],  
+[ 'Win32', '/..a/..b/..c/..',         '/t1/t2/t3',  '../../../..a/..b'     ],  
+[ 'Win32', '/..\\/..\\/..\\/..',      '/t1/t2/t3',  '../../..'             ],  
+[ 'Win32', 't1',                      '/t1/t2/t3',  't1'                   ],  
+[ 'Win32', '.',                       '/t1/t2/t3',  '.'                    ],  
+[ 'Win32', '\\\\a\\b/t1/t2/t4',       '/t1/t2/t3',  '\\\\a\\b/../t4'       ],  
+[ 'Win32', '//a\\b/t1/t2/t4',         '/t1/t2/t3',  '//a\\b/../t4'         ],  
+
+[ 'VMS',   'node::volume:[t1.t2.t3]', '[t1.t2.t3]',  'node::volume:'       ],
+[ 'VMS',   'node::volume:[t1.t2.t4]', '[t1.t2.t3]',  'node::volume:[.-.t4]'],
+
+[ 'URL', '/t1/t2/t3/',               '/t1/t2/t3/',  './'                    ],  
+[ 'URL', '/t1/t2/t4/',               '/t1/t2/t3/',  '../t4/'                ],  
+[ 'URL', '/t1/t2/',                  '/t1/t2/t3/',  '../'                   ],  
+[ 'URL', '/t1/t2/t3/t4/',            '/t1/t2/t3/',  't4/'                   ],  
+[ 'URL', '/t4/t5/t6/',               '/t1/t2/t3/',  '../../../t4/t5/t6/'    ],  
+[ 'URL', '../t4/',                   '/t1/t2/t3/',  '../t4/'                ],  
+[ 'URL', '/',                        '/t1/t2/t3/',  '../../../'             ],  
+[ 'URL', '//a.b.com/',               '/t1/t2/t3/',  '../../../'             ],  
+[ 'URL', '/./',                      '/t1/t2/t3/',  '../../../'             ],  
+[ 'URL', '/./',                      '/t1/t2/t3/',  '../../../'             ],  
+[ 'URL', '/../',                     '/t1/t2/t3/',  '../../../'             ],  
+[ 'URL', '/../../../../',            '/t1/t2/t3/',  '../../../'             ],  
+[ 'URL', '/..\\/..\\/..\\/../',      '/t1/t2/t3/',  '../../../..\\/..\\/'   ],  
+[ 'URL', '/..a/..b/..c/../',         '/t1/t2/t3/',  '../../../..a/..b/'     ],  
+[ 'URL', 't1/',                      '/t1/t2/t3/',  't1/'                   ],  
+[ 'URL', './',                       '/t1/t2/t3/',  './'                    ],
+[ 'URL', 'http:/./t1/t2/t3/',        'ftp:/./a/b',  'http:../t1/t2/t3/'     ],
+[ 'URL', '/./t1/t2/t3/..',           '/./a/b',     '../t1/t2/'              ],
+[ 'URL', '/./t1/t2',                 '/./a/b',     '../t1/t2'               ],
+[ 'URL', '/./t1/t2/t3',              '/./t1/t2/t4', 't3'                    ],
+
+[ 'other', '/t1/t2/t3',               '/t1/t2/t3',  '.'                    ],  
+[ 'other', '/t1/t2/t4',               '/t1/t2/t3',  '../t4'                ],  
+[ 'other', '/t1/t2',                  '/t1/t2/t3',  '..'                   ],  
+[ 'other', '/t1/t2/t3/t4',            '/t1/t2/t3',  't4'                   ],  
+[ 'other', '/t4/t5/t6',               '/t1/t2/t3',  '../../../t4/t5/t6'    ],  
+[ 'other', '../t4',                   '/t1/t2/t3',  '../t4'                ],  
+[ 'other', '/',                       '/t1/t2/t3',  '../../..'             ],  
+[ 'other', '///',                     '/t1/t2/t3',  '../../..'             ],  
+[ 'other', '/.',                      '/t1/t2/t3',  '../../..'             ],  
+[ 'other', '/./',                     '/t1/t2/t3',  '../../..'             ],  
+[ 'other', '/../',                    '/t1/t2/t3',  '../../..'             ],  
+[ 'other', '/../../../..',            '/t1/t2/t3',  '../../..'             ],  
+[ 'other', '/..\\/..\\/..\\/..',      '/t1/t2/t3',  '../../../..\\/..\\'   ],  
+[ 'other', '/..a/..b/..c/..',         '/t1/t2/t3',  '../../../..a/..b'     ],  
+[ 'other', 't1',                      '/t1/t2/t3',  't1'                   ],  
+[ 'other', '.',                       '/t1/t2/t3',  '.'                    ]   
 );
 for( $i= 0; $i <= $#data; ++$i ) {
         $fsspec   = $data[ $i ][ 0 ] ;

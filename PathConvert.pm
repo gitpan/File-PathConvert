@@ -14,7 +14,7 @@ use strict ;
 BEGIN {
    use Exporter   ();
    use vars       qw($VERSION @ISA @EXPORT_OK);
-   $VERSION       = 0.83;
+   $VERSION       = 0.84;
    @ISA           = qw(Exporter);
    @EXPORT_OK     = qw(setfstype splitpath joinpath splitdirs joindirs realpath abs2rel rel2abs $maxsymlinks $verbose $SL $resolved );
 }
@@ -163,7 +163,7 @@ sub setfstype($;) {
       $sepRE            = '[\\\\/]' ;
       $notsepRE         = '[^\\\\/]' ;
       $volumeRE         = '(?:^(?:[a-zA-Z]:|(?:\\\\\\\\|//)[^\\\\/]+[\\\\/][^\\\\/]+)?)' ;
-      $directoryRE      = '(?:(?:.*[\\\\/])?)' ;
+      $directoryRE      = '(?:(?:.*[\\\\/](?:\.\.?$)?)?)' ;
       $isrootRE         = '(?:^[\\\\/])' ;
       $thisDir          = '.' ;
       $thisDirRE        = '\.' ;
@@ -229,12 +229,12 @@ sub setfstype($;) {
 
       # Directories do _not_ include the query component: we pretend that 
       # anything after a "?" is the filename or part of it.  So a '/'
-      # terminates and is part of the directory spec, while a '?' terminates
-      # and is not part of the directory spec.
+      # terminates and is part of the directory spec, while a '?' or '#'
+      # terminate and are not part of the directory spec.
       #
       # We pretend that ";param" syntax does not exist
       #
-      $directoryRE      = '(?:(?:[^?]*/)?)' ;
+      $directoryRE      = '(?:(?:[^?#]*/(?:\.\.?(?:$|(?=[?#])))?)?)' ;
       $isrootRE         = '(?:^/)' ;
       $thisDir          = '.' ;
       $thisDirRE        = '\.' ;
@@ -252,7 +252,7 @@ sub setfstype($;) {
       $sepRE            = '/' ;
       $notsepRE         = '[^/]' ;
       $volumeRE         = '' ;
-      $directoryRE      = '(?:(?:.*/)?)' ;
+      $directoryRE      = '(?:(?:.*/(?:\.\.?$)?)?)' ;
       $isrootRE         = '(?:^/)' ;
       $thisDir          = '.' ;
       $thisDirRE        = '\.' ;
@@ -335,6 +335,13 @@ setfstype( $^O ) ;
 #              $volume: up to and including first ":"
 #              $directory: "[...]" component
 #              $filename: the rest.
+#              $nofile is ignored
+#
+#           URL:
+#              $volume: up to ':', then '//stuff/morestuff'.  No trailing '/'.
+#              $directory: after $volume, up to last '/'
+#              $filename: the rest.
+#              $nofile is ignored
 #
 # Interface:
 #       i)     $path
@@ -344,7 +351,7 @@ setfstype( $^O ) ;
 #
 sub splitpath {
    my( $path, $nofile )= @_ ;
-   if ( $fstype ne 'VMS' && $nofile ) {
+   if ( $fstype ne 'VMS' && $fstype ne 'URL' && $nofile ) {
       $path =~ m/($volumeRE)(.*)()$/ ;
       return ( $1, $2, $3 ) ;
    }
@@ -388,18 +395,27 @@ sub joinpath($;$;$;) {
          if ( $directory ne '' && $directory !~ m/^\[.*\]$/ ) ;
    }
    else {
+      # Add trailing separator to directory names that require it and
+      # need it.  URLs always require it if there are any directory
+      # components.
       $directory.= $sep
-         if ( $directory ne '' && $filename ne '' && $directory !~ m/$sepRE$/ );
+         if (  $directory ne '' 
+            && ( $fstype eq 'URL' || $filename ne '' )
+            && $directory !~ m/$sepRE$/ 
+            ) ;
 
-      if ( $fstype eq 'Win32' ) {
-         # Add trailing '\' for UNC volume names that lack it and need it.
-         $volume.= $sep
-            if (  $volume    =~ m#^$sepRE{2}#
-               && $volume    !~ m#$sepRE$#  
-               && $directory !~ m#^$sepRE#      
-               && ( $directory ne '' || $filename ne '' )
-               ) ;
-      }
+      # Add trailing separator to volume for UNC and HTML volume
+      # names that lack it and need it.
+      # Note that if a URL volume is a scheme only (ends in ':'),
+      # we don't require a separator: it's a relative URL.
+      $volume.= $sep
+         if (  (  ( $fstype eq 'Win32' && $volume =~ m#^$sepRE{2}# )
+               || ( $fstype eq 'URL'   && $volume =~ m#[^:/]$#     )
+               )
+            && $volume    !~ m#$sepRE$#  
+            && $directory !~ m#^$sepRE#      
+            && ( $directory ne '' || $filename ne '' )
+            ) ;
    }
 
    return join( '', $volume, $directory, $filename ) ;
@@ -558,7 +574,7 @@ sub abs2rel($;$;) {
     my($path, $base) = @_;
     my($reg );
 
-    my( $path_volume, $path_directory, $path_file )= splitpath( $path, 'nofile' ) ;
+    my( $path_volume, $path_directory, $path_file )= splitpath( $path,'nofile');
     if ( $path_directory !~ /$isrootRE/ ) {
         warn("abs2rel: nothing to do: '$path' is relative.") if $verbose;
         return $path;
@@ -567,7 +583,7 @@ sub abs2rel($;$;) {
     $base = cwd()
        if ( $base eq '' ) ;
 
-    my( $base_volume, $base_directory, $base_file )= splitpath( $base, 'nofile' ) ;
+    my( $base_volume, $base_directory, $base_file )= splitpath( $base,'nofile');
     # check for a filename, since the nofile parameter does not work for OSs
     # like VMS that have explicit delimiters between the dir and file portions
     warn( "rel2abs: filename '$base_file' passed in \$base" )
@@ -582,28 +598,36 @@ sub abs2rel($;$;) {
         $base_directory = join( '', $cw_directory, $sep, $base_directory ) ;
     }
 
+#print( "[$path_directory,$base_directory]\n" ) ;
     regularize($path_directory);
     regularize($base_directory);
-
+#print( "[$path_directory,$base_directory]\n" ) ;
     # Now, remove all leading components that are the same, so 'name/a'
     # 'name/b' become 'a' and 'b'.
     my @pathchunks = split($sepRE, $path_directory);
     my @basechunks = split($sepRE, $base_directory);
 
-    if ( $casesensitive ) {
-        while (@pathchunks && @basechunks && $pathchunks[0] eq $basechunks[0]) {
+    if ( $casesensitive ) 
+    {
+        while (@pathchunks && @basechunks && $pathchunks[0] eq $basechunks[0]) 
+        {
             shift @pathchunks ;
             shift @basechunks ;
         }
     }
     else {
-        while (@pathchunks && @basechunks && lc( $pathchunks[0] ) eq lc( $basechunks[0] ) ) {
+        while (  @pathchunks 
+              && @basechunks 
+              && lc( $pathchunks[0] ) eq lc( $basechunks[0] ) 
+              ) 
+        {
             shift @pathchunks ;
             shift @basechunks ;
         }
     }
     $path_directory= join( $sep, @pathchunks );
     $base_directory= join( $sep, @basechunks );
+#print( "[$path_directory,$base_directory]\n" ) ;
 
     # Convert $base_directory from absolute to relative
     if ( $fstype eq 'VMS' ) {
@@ -614,10 +638,12 @@ sub abs2rel($;$;) {
         $base_directory=~ s/^$sepRE// ;
     }
 
+#print( "[$base_directory]\n" ) ;
     # $base_directory now contains the directories the resulting relative path 
     # must ascend out of before it can descend to $path_directory.  So, 
     # replace all names with $parentDir
     $base_directory =~ s/$notsepRE+/$parentDir/g;
+#print( "[$base_directory]\n" ) ;
 
     # Glue the two together, using a separator if necessary, and preventing an
     # empty result.
@@ -625,13 +651,19 @@ sub abs2rel($;$;) {
         $path_directory = $base_directory . $sep . $path_directory;
     } else {
         $path_directory = $base_directory . $path_directory;
-        if ( $path_directory eq '' ) {
-            $path_directory = $thisDir ;
-        }
     }
 
-    regularize($path_directory);
+#print( "[$path_directory]\n" ) ;
+    # if there is no directory spec and a file name, don't regularize,
+    # since that would result in a '.', which leads to a './file', which
+    # isn't as clean as just plain 'file'
+    regularize($path_directory)
+        if ( $path_directory ne '' || $path_file eq '' ) ;
+#print( "[$path_directory]\n" ) ;
 
+    # relative URLs should have no name in the volume, only a scheme.
+    $path_volume=~ s#/.*##
+        if ( $fstype eq 'URL' ) ;
     return joinpath( $path_volume, $path_directory, $path_file ) ;
 }
 
@@ -808,7 +840,7 @@ Many more examples abound in the test.pl included with this module.
 Only the VMS and URL filesystems indicate if the last name in a path is a
 directory or file.  For other filesystems, all non-volume names are assumed to
 be directory names.  For URLs, the last name in a path is assumed to be a
-filename unless it ends in '/'.   
+filename unless it ends in '/', '/.', or '/..'.   
 
 Other assumptions are made as well, especially MacOS and VMS. THESE MAY CHANGE
 BASED ON PROGRAMMER FEEDBACK!
@@ -895,6 +927,8 @@ No filesystem calls are made except for getting the current working directory
 if $base is undefined, so symbolic links are not checked for or resolved, and
 no check is done for existance.
 
+C<rel2abs> will not return a path of the form "./file".
+
 Examples
 
     # Unix
@@ -941,6 +975,10 @@ To be written...
 =item joinpath
 
 To be written...
+
+Note that joinpath( splitpath( $path ) ) usually yields path.  URLs
+with directory components ending in '/.' or '/..' will be fixed 
+up to end in '/./' and '/../'.
 
 =item splitdirs
 
