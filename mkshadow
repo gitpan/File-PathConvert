@@ -13,7 +13,7 @@
 #
 #	This is a sample application of module File::PathConvert.
 #
-#                               23-Oct-1996 Shigio Yamaguchi
+#                               8-Mar-1998 Shigio Yamaguchi
 #
 $usage = "usage: mkshadow [ -p ] source [ destination ]\n";
 #
@@ -55,14 +55,7 @@ sub wanted {
     return if $_ eq '.';
     $cwd = cwd();
     $target = rel2abs($_, $cwd);
-    if (-d $_) {
-        $target =~ s/$source/$destination/;
-        if ($opt_p) {
-            print "mkdir $target\n";
-        } else {
-            mkdir($target, 0755);
-        }
-    } elsif (-f _) {
+    if (-l $_ || -f _) {
         $dir = $cwd;
         $dir =~ s/$source/$destination/;
         $file = abs2rel($target, $dir);
@@ -73,6 +66,13 @@ sub wanted {
             chdir($dir) || die "cannot chdir $dir\n";
             symlink($file, basename($file, '')) || die "cannot symlink\n";
             chdir($cwd) || die "cannot return to $cwd\n";
+        }
+    } elsif (-d _) {
+        $target =~ s/$source/$destination/;
+        if ($opt_p) {
+            print "mkdir $target\n";
+        } else {
+            mkdir($target, 0755);
         }
     }
 }

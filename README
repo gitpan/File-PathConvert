@@ -1,8 +1,8 @@
 ----------------------------------------------------------------------------
 
-PathConvert module 0.3 for perl version5
+PathConvert module 0.4 for perl version5
 
-					Shigio Yamaguchi	9-Jan-1997
+					Shigio Yamaguchi	8-Mar-1998
 
 ----------------------------------------------------------------------------
 1. Introduction
@@ -88,6 +88,13 @@ MANIFEST	... file list
 		  nroff/troff (e.g. pod2html)
 		* including suggested use of $resolved in SYNOPSIS
 		* putting more useful information in the warning messages
+
+8-Mar-1998	version 0.4
+
+		mkshadow
+			- Bug (Mkshadow converted symbolic links into real path.)
+			  fixed.
+		abs2rel	- modified to produce regularize path name.
 
 5. Copyright
 

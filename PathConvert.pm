@@ -5,10 +5,10 @@
 #
 #	File::PathConvert.pm
 #
-#				9-Jan-1998 Shigio Yamaguchi
+#				8-Mar-1998 Shigio Yamaguchi
 #
 package File::PathConvert;
-$VERSION = '0.3';
+$VERSION = '0.4';
 
 require 5.002;
 require Exporter;
@@ -144,6 +144,8 @@ sub abs2rel($;$;) {
     } else {
 	$path = $base . $path;
     }
+    regularize($path);
+    $path;
 }
 
 #
