@@ -1,6 +1,7 @@
 MANIFEST
 Makefile.PL
 PathConvert.pm
+PathConvert.html
 README
 mkshadow
 test.pl

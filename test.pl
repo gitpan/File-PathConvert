@@ -1,7 +1,7 @@
 #!/usr/local/bin/perl -w
 
 use Cwd;
-use File::PathConvert qw( setfstype splitpath joinpath splitdirectories joindirectories realpath abs2rel rel2abs $verbose );
+use File::PathConvert qw( setfstype splitpath joinpath splitdirs joindirs realpath abs2rel rel2abs $verbose );
 
 $| = 1;
 open(LOG, ">LOG") || die("cannot make log file");
@@ -159,7 +159,7 @@ for( $i= 0; $i <= $#data; ++$i ) {
 setfstype( $^O ) ;
 
 #
-# splitdirectories & joindirectories
+# splitdirs & joindirs
 #
 @data = (
 # fsspec   I               O             
@@ -205,20 +205,20 @@ for( $i= 0; $i <= $#data; ++$i ) {
             setfstype( $fsspec ) ;
             $oldfsspec= $fsspec ;
         }
-        @intermediate= splitdirectories( $in ) ;
+        @intermediate= splitdirs( $in ) ;
         $intermediate = join( '', ( "[ '", join( "', '", @intermediate ), "' ]" ) ) ;
         if ( $intermediate ne $intermediate_expected ) {
                 print_error( 
-                        "$intermediate = splitdirectories( '$in' ) ; # for '$fsspec'", 
+                        "$intermediate = splitdirs( '$in' ) ; # for '$fsspec'", 
                         "$intermediate_expected"
                 ) ;
                 next ;
         }
         print ".";
-        $out= joindirectories( @intermediate ) ;
+        $out= joindirs( @intermediate ) ;
         if ( $out ne $expected ) {
                 print_error( 
-                        "'$out' = joindirectories( $intermediate ) ; # for '$fsspec'", 
+                        "'$out' = joindirs( $intermediate ) ; # for '$fsspec'", 
                         "'$expected'"
                 ) ;
                 next ;
