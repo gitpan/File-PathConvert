@@ -37,6 +37,22 @@ BEGIN {
    [ 'VMS',   'node::volume:[t1.t2.t3]', '[t1.t2.t3]',  'node::volume:'       ],
    [ 'VMS',   'node::volume:[t1.t2.t4]', '[t1.t2.t3]',  'node::volume:[.-.t4]'],
 
+## MacOS support has always been borked, it seems.   This module is deprecated,
+## so I am just going to document the problem.
+#   [ 'MacOS', 't1:t2:t3',                't1:t2:t3',  ''                     ],  
+#   [ 'MacOS', 't1:t2',                   't1:t2:t3',  '::'                   ],  
+#   [ 'MacOS', 't1:t4',                   't1:t2:t3',  ':::t4'                ],  
+#   [ 'MacOS', 't1:t2:t4',                't1:t2:t3',  '::t4'                ],  
+#   [ 'MacOS', 't1:t2:t3:t4',             't1:t2:t3',  't4'                   ],  
+
+#   [ 'MacOS', 't4:t5:t6',                't1:t2:t3',  '::::t4:t5:t6'    ],  
+#   [ 'MacOS', '::t4',                    't1:t2:t3',  '::t4'                ],  
+#   [ 'MacOS', '',                        't1:t2:t3',  ''             ],  
+#   [ 'MacOS', ':::',                     't1:t2:t3',  't1'             ],  
+#   [ 'MacOS', '::',                      't1:t2:t3',  '::'              ],  
+#   [ 'MacOS', '::::',                    't1:t2:t3',  '::::'             ],  
+#   [ 'MacOS', 't1',                      't1:t2:t3',  ':::'                   ],  
+
    [ 'URL', '/t1/t2/t3/',               '/t1/t2/t3/',  ''                    ],  
    [ 'URL', '/t1/t2/t4/',               '/t1/t2/t3/',  '../t4/'                ],  
    [ 'URL', '/t1/t2/',                  '/t1/t2/t3/',  '../'                   ],  

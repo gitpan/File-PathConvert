@@ -14,7 +14,7 @@ use strict ;
 BEGIN {
    use Exporter   ();
    use vars       qw($VERSION @ISA @EXPORT_OK);
-   $VERSION       = 0.85;
+   $VERSION       = 0.9;
    @ISA           = qw(Exporter);
    @EXPORT_OK     = qw(setfstype splitpath joinpath splitdirs joindirs realpath abs2rel rel2abs $maxsymlinks $verbose $SL $resolved );
 }
@@ -42,7 +42,7 @@ my $notsepRE      ; # RE to match anything else
 my $volumeRE      ; # RE to match the volume name
 my $directoryRE   ; # RE to match the directory name
 my $isrootRE      ; # RE to match root path: applied to directory portion only
-my $thisDir       ; # Name of this directory
+#my $thisDir       ; # Name of this directory
 my $thisDirRE     ; # Name of this directory
 my $parentDir     ; # Name of parent directory
 my $parentDirRE   ; # RE to match parent dir name
@@ -165,7 +165,7 @@ sub setfstype($;) {
       $volumeRE         = '(?:^(?:[a-zA-Z]:|(?:\\\\\\\\|//)[^\\\\/]+[\\\\/][^\\\\/]+)?)' ;
       $directoryRE      = '(?:(?:.*[\\\\/](?:\.\.?$)?)?)' ;
       $isrootRE         = '(?:^[\\\\/])' ;
-      $thisDir          = '.' ;
+#      $thisDir          = '.' ;
       $thisDirRE        = '\.' ;
       $parentDir        = '..' ;
       $parentDirRE      = '(?:\.\.)' ;
@@ -178,15 +178,15 @@ sub setfstype($;) {
       $sep              = ':' ;
       $sepRE            = '\:' ;
       $notsepRE         = '[^:]' ;
-      $volumeRE         = '(?:^(?:.*::)?)' ;
+      $volumeRE         = '(?:^(?:[^:]+:)?)' ;
       $directoryRE      = '(?:(?:.*:)?)' ;
-      $isrootRE         = '(?:^:)' ;
-      $thisDir          = '.' ;
-      $thisDirRE        = '\.' ;
-      $parentDir        = '..' ;
-      $parentDirRE      = '(?:\.\.)' ;
+      $isrootRE         = '(?:^(?=[^:].*:)?)' ;
+#      $thisDir          = '' ;
+      $thisDirRE        = 'cantpossiblymatchthis' ;
+      $parentDir        = '' ;
+      $parentDirRE      = '(?=(?<=:):)' ;
       $casesensitive    = 0 ;
-      $idempotent       = 1 ;
+      $idempotent       = 0 ;
    }
    elsif ( $osname =~ /^VMS$/i )
    {
@@ -210,7 +210,7 @@ sub setfstype($;) {
       # Root is the lack of a leading '.', unless string is empty, which
       # means 'cwd', which is relative.
       $isrootRE         = '(?:^[^\.])' ;
-      $thisDir          = '' ;
+#      $thisDir          = '' ;
       $thisDirRE        = '\[\]' ;
       $parentDir        = '-' ;
       $parentDirRE      = '-' ;
@@ -236,7 +236,7 @@ sub setfstype($;) {
       #
       $directoryRE      = '(?:(?:[^?#]*/(?:\.\.?(?:$|(?=[?#])))?)?)' ;
       $isrootRE         = '(?:^/)' ;
-      $thisDir          = '.' ;
+#      $thisDir          = '.' ;
       $thisDirRE        = '\.' ;
       $parentDir        = '..' ;
       $parentDirRE      = '(?:\.\.)' ;
@@ -254,7 +254,7 @@ sub setfstype($;) {
       $volumeRE         = '' ;
       $directoryRE      = '(?:(?:.*/(?:\.\.?$)?)?)' ;
       $isrootRE         = '(?:^/)' ;
-      $thisDir          = '.' ;
+#      $thisDir          = '.' ;
       $thisDirRE        = '\.' ;
       $parentDir        = '..' ;
       $parentDirRE      = '(?:\.\.)' ;
@@ -296,12 +296,12 @@ notsepRE      = /$notsepRE/
 volumeRE      = /$volumeRE/
 directoryRE   = /$directoryRE/
 isrootRE      = /$isrootRE/
-thisDir       = "$thisDir"
 thisDirRE     = /$thisDirRE/
 parentDir     = "$parentDir"
 parentDirRE   = /$parentDirRE/
 casesensitive = "$casesensitive"
 TOHERE
+#thisDir       = "$thisDir"
    }
 
    return $fstype ;
@@ -631,7 +631,7 @@ sub abs2rel($;$;) {
     }
 
     $base = cwd()
-       if ( $base eq '' ) ;
+        if ( !defined( $base ) || $base eq '' ) ;
 
     my( $base_volume, $base_directory, $base_file )= splitpath( $base,'nofile');
     # check for a filename, since the nofile parameter does not work for OSs
@@ -648,10 +648,8 @@ sub abs2rel($;$;) {
         $base_directory = join( '', $cw_directory, $sep, $base_directory ) ;
     }
 
-#print( "[$path_directory,$base_directory]\n" ) ;
     $path_directory = regularize( $path_directory );
     $base_directory = regularize( $base_directory );
-#print( "[$path_directory,$base_directory]\n" ) ;
     # Now, remove all leading components that are the same, so 'name/a'
     # 'name/b' become 'a' and 'b'.
     my @pathchunks = split($sepRE, $path_directory);
@@ -680,7 +678,6 @@ sub abs2rel($;$;) {
     # are well formed.
     $path_directory= join( $sep, @pathchunks );
     $base_directory= join( $sep, @basechunks );
-#print( "[$path_directory,$base_directory]\n" ) ;
 
     # Convert $base_directory from absolute to relative
     if ( $fstype eq 'VMS' ) {
@@ -691,12 +688,10 @@ sub abs2rel($;$;) {
         $base_directory=~ s/^$sepRE// ;
     }
 
-#print( "[$base_directory]\n" ) ;
     # $base_directory now contains the directories the resulting relative path 
     # must ascend out of before it can descend to $path_directory.  So, 
     # replace all names with $parentDir
     $base_directory =~ s/$notsepRE+/$parentDir/g ;
-#print( "[$base_directory]\n" ) ;
 
     # Glue the two together, using a separator if necessary, and preventing an
     # empty result.
@@ -709,8 +704,21 @@ sub abs2rel($;$;) {
     $path_directory = regularize( $path_directory ) ;
 
     # relative URLs should have no name in the volume, only a scheme.
-    $path_volume=~ s#/.*##
-        if ( $fstype eq 'URL' ) ;
+    if ( $fstype eq 'URL' ) {
+        $path_volume =~ s#/.*## ;
+        # NOTE: if case insensitive URLs are ever done, this next comparison
+        # needs to be tweaked.
+        my $path_file_file = $path_file ;
+        $path_file_file =~ s/#.*// ;
+        my $base_file_file = $base_file ;
+        $base_file_file =~ s/#.*// ;
+        $path_file =~ s/[^#]+//
+            if ( $path_file_file eq $base_file_file ) ;
+    }
+
+    # MacOS relative URLs should have no volume.
+    $path_volume =''
+        if ( $fstype eq 'MacOS' ) ;
     return joinpath( $path_volume, $path_directory, $path_file ) ;
 }
 
@@ -797,8 +805,7 @@ sub regularize {
     # We do this after deleting redundant separators in order to be consistent.
     # If a Win32 path ended in \/, we want to be sure that the \ is returned,
     # no the /.
-    $in =~ /($sepRE)$sepRE*$/ ;
-    my $trailing_sep = defined( $1 ) ? $1 : '' ;
+    my $trailing_sep = $in =~ /($sepRE)$sepRE*$/ ? $1 : '';
 
     # Delete all occurences of 'name/..(/|$)'.  This is done with a while
     # loop to get rid of things like 'name1/name2/../..'. We chose the pattern
@@ -834,235 +841,247 @@ __END__
 
 =head1 NAME
 
-abs2rel - convert an absolute path to a relative path
-
-rel2abs - convert a relative path to an absolute path
-
-realpath - convert a logical path to a physical path (resolve symlinks)
-
-splitpath - split a path in to volume, directory and filename components
-
-joinpath - join volume, directory, and filename components to form a path
-
-splitdirs - split directory specification in to component names
-
-joindirs - join component names in to a directory specification
-
-setfstype - set the file system type
-
+File::PathConvert - DEPRECATED: USE File::Spec and Cwd::abs_path().
 
 =head1 SYNOPSIS
 
-    use File::PathConvert qw(realpath abs2rel rel2abs setfstype splitpath 
-      joinpath splitdirs joindirs $resolved);
+    *** THIS MODULE (File::PathConvert) IS DEPRECATED. ****
 
-    $relpath = abs2rel($abspath);
-    $abspath = abs2rel($abspath, $base);
+    There are several known bugs, and it is not being actively
+    maintained since all functionality is now available in
+    modules (Cwd.pm and File::Spec) bundled in every Perl
+    distribution of recent vintage.  This version is provided to
+    fix a few bugs and to get the word out about the
+    deprecation.
 
-    $abspath = rel2abs($relpath);
-    $abspath = rel2abs($relpath, $base);
+    Please use Cwd::abs_path() instead of
+    File::PathConvert::realpath() and File::Spec methods instead
+    of all other path manipulation functions in this module.
 
-    $path = realpath($logpath) || die "resolution stopped at $resolved";
+    If you use setfstype, you probably want to access a File::Spec::Foo
+    module for the appropriate operating system.
 
-    ( $volume, $directory, $filename )= splitpath( $path ) ;
-    ( $volume, $directory, $filename )= splitpath( $path, 'nofile' ) ;
+    There is also a version of File::Spec on CPAN for backwards
+    compatability.
 
-    $path= joinpath( $volume, $directory, $filename ) ;
+    Thank you,
 
-    @directories= splitdirs( $directory ) ;
-    $directory= joindirs( @directories ) ;
+    Barrie Slaymaker <barries@slaysys.com>
 
-=head1 DESCRIPTION
+=cut
 
-File::PathConvert provides functions to convert between absolute and
-relative paths, and from logical paths to physical paths on a variety of
-filesystems, including the URL 'filesystem'.
-
-Paths are decomposed internally in to volume, directory, and, sometimes
-filename portions as appropriate to the operation and filesystem, then
-recombined.  This preserves the volume and filename portions so that they may
-be returned, and prevents them from interfering with the path conversions.  
-
-Here are some examples of path decomposition.  A '****' in a column indicates
-the column is not used in C<abs2rel> and C<rel2abs> functions for that
-filesystem type.
-
-
-    FS      VOLUME                  Directory       filename
-    ======= ======================= =============== =============
-    URL     http:                   /a/b/           c?query
-            http://fubar.com        /a/b/           c?query
-            //p.d.q.com             /a/b/c/         ?query
-
-    VMS     Server::Volume:         [a.b]           c
-            Server"access spec"::   [a.b]           c
-            Volume:                 [a.b]           c
-
-    Win32   A:                      \a\b\c          ****
-            \\server\Volume         \a\b\c          ****
-            \\server\Volume         \a/b/c          ****
-
-    Unix    ****                    \a\b\c          ****
-
-    MacOS   Volume::                a:b:c           ****
-
-Many more examples abound in the test.pl included with this module.
-
-Only the VMS and URL filesystems indicate if the last name in a path is a
-directory or file.  For other filesystems, all non-volume names are assumed to
-be directory names.  For URLs, the last name in a path is assumed to be a
-filename unless it ends in '/', '/.', or '/..'.   
-
-Other assumptions are made as well, especially MacOS and VMS. THESE MAY CHANGE
-BASED ON PROGRAMMER FEEDBACK!
-
-The conversion routines C<abs2rel>, C<rel2abs>, and C<realpath> are the 
-main focus of this package.  C<splitpath> and C<joinpath> are provided to 
-allow volume oriented filesystems (almost anything non-unixian, actually)
-to be accomodated.  C<splitdirs> and C<joindirs> provide directory path
-grammar parsing and encoding, which is especially useful for VMS.
-
-=over 4
-
-=item setfstype
-
-This is called automatically on module load to set the filesystem type
-according to $^O. The user can call this later set the filesystem type
-manually.  If the name is not recognized, unix defaults are used.  Names
-matching /^URL$/i, /^VMS$/i, /^MacOS$/i, or /^(ms)?(win|dos)/32|nt)?$/i yield
-the appropriate (hopefully) filesystem settings.  These strings may be
-generalized in the future.
-
-Examples:
-
-    File::PathConvert::setfstype( 'url' ) ; 
-    File::PathConvert::setfstype( 'Win32' ) ;
-    File::PathConvert::setfstype( 'HAL9000' ) ; # Results in Unix default
-
-=item abs2rel
-
-C<abs2rel> converts an absolute path name to a relative path:
-converting /1/2/3/a/b/c relative to /1/2/3 returns a/b/c
-
-    $relpath= abs2rel( $abspath ) ;
-    $relpath= abs2rel( $abspath, $base ) ;
-
-If $abspath is already relative, it is returned unchanged.  Otherwise the
-relative path from $base to $abspath is returned.  If $base is undefined the
-current directory is used.
-
-The volume and filename portions of $base are ignored if present.  
-If $abspath and $base are on different volumes, the volume from $abspath is
-used.
-
-No filesystem calls are made except for getting the current working directory
-if $base is undefined, so symbolic links are not checked for or resolved, and
-no check is done for existance.
-
-Examples
-
-    # Unix
-    'a/b/c' == abs2rel( 'a/b/c', $anything )
-    'a/b/c' == abs2rel( '/1/2/3/a/b/c', '/1/2/3' )
-
-    # DOS
-    'a\\b/c' == abs2rel( 'a\\b/c', $anything )
-    'a\\b/c' == abs2rel( '/1\\2/3/a\\b/c', '/1/2/3' )
-
-    # URL
-    'http:a/b/c'           == abs2rel( 'http:a/b/c', $anything ) 
-    'http:a/b/c'           == abs2rel( 'http:/1/2/3/a/b/c',
-                                       'ftp://t.org/1/2/3/?z' )
-    'http:a/b/c?q'         == abs2rel( 'http:/1/2/3/a/b/c/?q',
-                                       'ftp://t.org/1/2/3?z'  )
-    'http://s.com/a/b/c?q' == abs2rel( 'http://s.com/1/2/3/a/b/c?q',
-                                       'ftp://t.org/1/2/3/?z')
-
-=item rel2abs
-
-C<rel2abs> makes converts a relative path name to an absolute path: 
-converting a/b/c relative to /1/2/3 returns /1/2/3/a/b/c.
-
-    $abspath= rel2abs( $relpath ) ;
-    $abspath= rel2abs( $relpath, $base ) ;
-
-If $relpath is already absolute, it is returned unchanged.  Otherwise $relpath
-is taken to be relative to $base and the resulting absolute path is returned.
-If $base is not supplied, the current working directory is used.
-
-The volume portion of $relpath is ignored.  The filename portion of $base is
-also ignored. The volume from $base is returned if present. The filename
-portion of $abspath is returned if present.
-
-No filesystem calls are made except for getting the current working directory
-if $base is undefined, so symbolic links are not checked for or resolved, and
-no check is done for existance.
-
-C<rel2abs> will not return a path of the form "./file".
-
-Examples
-
-    # Unix
-    '/a/b/c'       == rel2abs( '/a/b/c', $anything )
-    '/1/2/3/a/b/c' == rel2abs( 'a/b/c', '/1/2/3' )
-
-    # DOS
-    '\\a\\b/c'                == rel2abs( '\\a\\b/c', $anything )
-    '/1\\2/3\\a\\b/c'         == rel2abs( 'a\\b/c', '/1\\2/3' )
-    'C:/1\\2/3\\a\\b/c'       == rel2abs( 'D:a\\b/c', 'C:/1\\2/3' )
-    '\\\\s\\v/1\\2/3\\a\\b/c' == rel2abs( 'D:a\\b/c', '\\\\s\\v/1\\2/3' )
-
-    # URL
-    'http:/a/b/c?q'            == rel2abs( 'http:/a/b/c?q', $anything )
-    'ftp://t.org/1/2/3/a/b/c?q'== rel2abs( 'http:a/b/c?q',
-                                           'ftp://t.org/1/2/3?z' )
-
-
-=item realpath
-
-C<realpath> makes a canonicalized absolute pathname and
-resolves all symbolic links, extra ``/'' characters, and references
-to /./ and /../ in the path.
-C<realpath> resolves both absolute and relative paths.
-It returns the resolved name on success, otherwise it returns undef
-and sets the valiable C<$File::PathConvert::resolved> to the pathname
-that caused the problem.
-
-All but the last component of the path must exist.
-
-This implementation is based on 4.4BSD realpath(3).  It is not tested under
-other operating systems at this time.
-
-If '/sys' is a symbolic link to '/usr/src/sys':
-
-    chdir('/usr');
-    '/usr/src/sys/kern' == realpath('../sys/kern');
-    '/usr/src/sys/kern' == realpath('/sys/kern');
-
-=item splitpath
-
-To be written...
-
-=item joinpath
-
-To be written...
-
-Note that C<joinpath( splitpath( $path ) )> usually yields path.  URLs
-with directory components ending in '/.' or '/..' will be fixed 
-up to end in '/./' and '/../'.
-
-=item splitdirs
-
-To be written...
-
-=item joindirs
-
-
-=back
+#    use File::PathConvert qw(realpath abs2rel rel2abs setfstype splitpath 
+#      joinpath splitdirs joindirs $resolved);
+#
+#    $relpath = abs2rel($abspath);
+#    $abspath = abs2rel($abspath, $base);
+#
+#    $abspath = rel2abs($relpath);
+#    $abspath = rel2abs($relpath, $base);
+#
+#    $path = realpath($logpath) || die "resolution stopped at $resolved";
+#
+#    ( $volume, $directory, $filename )= splitpath( $path ) ;
+#    ( $volume, $directory, $filename )= splitpath( $path, 'nofile' ) ;
+#
+#    $path= joinpath( $volume, $directory, $filename ) ;
+#
+#    @directories= splitdirs( $directory ) ;
+#    $directory= joindirs( @directories ) ;
+#
+#=head1 DESCRIPTION
+#
+#File::PathConvert provides functions to convert between absolute and
+#relative paths, and from logical paths to physical paths on a variety of
+#filesystems, including the URL 'filesystem'.
+#
+#Paths are decomposed internally in to volume, directory, and, sometimes
+#filename portions as appropriate to the operation and filesystem, then
+#recombined.  This preserves the volume and filename portions so that they may
+#be returned, and prevents them from interfering with the path conversions.  
+#
+#Here are some examples of path decomposition.  A '****' in a column indicates
+#the column is not used in C<abs2rel> and C<rel2abs> functions for that
+#filesystem type.
+#
+#
+#    FS      VOLUME                  Directory       filename
+#    ======= ======================= =============== =============
+#    URL     http:                   /a/b/           c?query
+#            http://fubar.com        /a/b/           c?query
+#            //p.d.q.com             /a/b/c/         ?query
+#
+#    VMS     Server::Volume:         [a.b]           c
+#            Server"access spec"::   [a.b]           c
+#            Volume:                 [a.b]           c
+#
+#    Win32   A:                      \a\b\c          ****
+#            \\server\Volume         \a\b\c          ****
+#            \\server\Volume         \a/b/c          ****
+#
+#    Unix    ****                    \a\b\c          ****
+#
+#    MacOS   Volume::                a:b:c           ****
+#
+#Many more examples abound in the test.pl included with this module.
+#
+#Only the VMS and URL filesystems indicate if the last name in a path is a
+#directory or file.  For other filesystems, all non-volume names are assumed to
+#be directory names.  For URLs, the last name in a path is assumed to be a
+#filename unless it ends in '/', '/.', or '/..'.   
+#
+#Other assumptions are made as well, especially MacOS and VMS. THESE MAY CHANGE
+#BASED ON PROGRAMMER FEEDBACK!
+#
+#The conversion routines C<abs2rel>, C<rel2abs>, and C<realpath> are the 
+#main focus of this package.  C<splitpath> and C<joinpath> are provided to 
+#allow volume oriented filesystems (almost anything non-unixian, actually)
+#to be accomodated.  C<splitdirs> and C<joindirs> provide directory path
+#grammar parsing and encoding, which is especially useful for VMS.
+#
+#=over 4
+#
+#=item setfstype
+#
+#This is called automatically on module load to set the filesystem type
+#according to $^O. The user can call this later set the filesystem type
+#manually.  If the name is not recognized, unix defaults are used.  Names
+#matching /^URL$/i, /^VMS$/i, /^MacOS$/i, or /^(ms)?(win|dos)/32|nt)?$/i yield
+#the appropriate (hopefully) filesystem settings.  These strings may be
+#generalized in the future.
+#
+#Examples:
+#
+#    File::PathConvert::setfstype( 'url' ) ; 
+#    File::PathConvert::setfstype( 'Win32' ) ;
+#    File::PathConvert::setfstype( 'HAL9000' ) ; # Results in Unix default
+#
+#=item abs2rel
+#
+#C<abs2rel> converts an absolute path name to a relative path:
+#converting /1/2/3/a/b/c relative to /1/2/3 returns a/b/c
+#
+#    $relpath= abs2rel( $abspath ) ;
+#    $relpath= abs2rel( $abspath, $base ) ;
+#
+#If $abspath is already relative, it is returned unchanged.  Otherwise the
+#relative path from $base to $abspath is returned.  If $base is undefined the
+#current directory is used.
+#
+#The volume and filename portions of $base are ignored if present.  
+#If $abspath and $base are on different volumes, the volume from $abspath is
+#used.
+#
+#No filesystem calls are made except for getting the current working directory
+#if $base is undefined, so symbolic links are not checked for or resolved, and
+#no check is done for existance.
+#
+#Examples
+#
+#    # Unix
+#    'a/b/c' == abs2rel( 'a/b/c', $anything )
+#    'a/b/c' == abs2rel( '/1/2/3/a/b/c', '/1/2/3' )
+#
+#    # DOS
+#    'a\\b/c' == abs2rel( 'a\\b/c', $anything )
+#    'a\\b/c' == abs2rel( '/1\\2/3/a\\b/c', '/1/2/3' )
+#
+#    # URL
+#    'http:a/b/c'           == abs2rel( 'http:a/b/c', $anything ) 
+#    'http:a/b/c'           == abs2rel( 'http:/1/2/3/a/b/c',
+#                                       'ftp://t.org/1/2/3/?z' )
+#    'http:a/b/c?q'         == abs2rel( 'http:/1/2/3/a/b/c/?q',
+#                                       'ftp://t.org/1/2/3?z'  )
+#    'http://s.com/a/b/c?q' == abs2rel( 'http://s.com/1/2/3/a/b/c?q',
+#                                       'ftp://t.org/1/2/3/?z')
+#
+#=item rel2abs
+#
+#C<rel2abs> makes converts a relative path name to an absolute path: 
+#converting a/b/c relative to /1/2/3 returns /1/2/3/a/b/c.
+#
+#    $abspath= rel2abs( $relpath ) ;
+#    $abspath= rel2abs( $relpath, $base ) ;
+#
+#If $relpath is already absolute, it is returned unchanged.  Otherwise $relpath
+#is taken to be relative to $base and the resulting absolute path is returned.
+#If $base is not supplied, the current working directory is used.
+#
+#The volume portion of $relpath is ignored.  The filename portion of $base is
+#also ignored. The volume from $base is returned if present. The filename
+#portion of $abspath is returned if present.
+#
+#No filesystem calls are made except for getting the current working directory
+#if $base is undefined, so symbolic links are not checked for or resolved, and
+#no check is done for existance.
+#
+#C<rel2abs> will not return a path of the form "./file".
+#
+#Examples
+#
+#    # Unix
+#    '/a/b/c'       == rel2abs( '/a/b/c', $anything )
+#    '/1/2/3/a/b/c' == rel2abs( 'a/b/c', '/1/2/3' )
+#
+#    # DOS
+#    '\\a\\b/c'                == rel2abs( '\\a\\b/c', $anything )
+#    '/1\\2/3\\a\\b/c'         == rel2abs( 'a\\b/c', '/1\\2/3' )
+#    'C:/1\\2/3\\a\\b/c'       == rel2abs( 'D:a\\b/c', 'C:/1\\2/3' )
+#    '\\\\s\\v/1\\2/3\\a\\b/c' == rel2abs( 'D:a\\b/c', '\\\\s\\v/1\\2/3' )
+#
+#    # URL
+#    'http:/a/b/c?q'            == rel2abs( 'http:/a/b/c?q', $anything )
+#    'ftp://t.org/1/2/3/a/b/c?q'== rel2abs( 'http:a/b/c?q',
+#                                           'ftp://t.org/1/2/3?z' )
+#
+#
+#=item realpath
+#
+#C<realpath> makes a canonicalized absolute pathname and
+#resolves all symbolic links, extra ``/'' characters, and references
+#to /./ and /../ in the path.
+#C<realpath> resolves both absolute and relative paths.
+#It returns the resolved name on success, otherwise it returns undef
+#and sets the valiable C<$File::PathConvert::resolved> to the pathname
+#that caused the problem.
+#
+#All but the last component of the path must exist.
+#
+#This implementation is based on 4.4BSD realpath(3).  It is not tested under
+#other operating systems at this time.
+#
+#If '/sys' is a symbolic link to '/usr/src/sys':
+#
+#    chdir('/usr');
+#    '/usr/src/sys/kern' == realpath('../sys/kern');
+#    '/usr/src/sys/kern' == realpath('/sys/kern');
+#
+#=item splitpath
+#
+#To be written...
+#
+#=item joinpath
+#
+#To be written...
+#
+#Note that C<joinpath( splitpath( $path ) )> usually yields path.  URLs
+#with directory components ending in '/.' or '/..' will be fixed 
+#up to end in '/./' and '/../'.
+#
+#=item splitdirs
+#
+#To be written...
+#
+#=item joindirs
+#
+#
+#=back
 
 =head1 BUGS
 
 C<realpath> is not fully multiplatform.
+
+C<abs2rel> is broken in MacOS mode.
 
 
 =head1 LIMITATIONS
@@ -1092,7 +1111,7 @@ selected, like File::Basename does.
 
 =head1 AUTHORS
 
-Barrie Slaymaker <rbs@telerama.com>
+Barrie Slaymaker <barries@slaysys.com>
 Shigio Yamaguchi <shigio@wafu.netgate.net>
 
 =cut

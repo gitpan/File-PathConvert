@@ -33,6 +33,7 @@ BEGIN {
 [ 'Win32', '\\\\node\\share\\d1/d2\\d3/',              '\\\\node\\share',            '\\d1/d2\\d3/',   ''            ],                         
 [ 'Win32', '\\\\node\\share\\d1/d2\\d3/file',          '\\\\node\\share',            '\\d1/d2\\d3/',   'file'        ],                         
 [ 'Win32', '\\\\node\\share\\d1/d2\\file',             '\\\\node\\share',            '\\d1/d2\\',      'file'        ],                         
+
 [ 'VMS',   'file',                                     '',                           '',               'file'        ],                         
 [ 'VMS',   '[d1.d2.d3]',                               '',                           '[d1.d2.d3]',     ''            ],                         
 [ 'VMS',   '[.d1.d2.d3]',                              '',                           '[.d1.d2.d3]',    ''            ],                         

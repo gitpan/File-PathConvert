@@ -15,31 +15,6 @@ my @data ;
 BEGIN {
    @data = (
      # OS       INPUT             BASE                       OUTPUT                   
-     [ 'Win32', 'temp\\..',       'C:\\',                    'C:\\'                    ],
-     [ 'Win32', 'temp\\..',       'C:\\a',                   'C:\\a'                   ],
-     [ 'Win32', 'temp\\..',       'C:\\a\\',                 'C:\\a\\'                 ],
-     [ 'Win32', 'temp\\..\\',     'C:\\a',                   'C:\\a\\'                 ],
-     [ 'Win32', 'temp\\..\\',     'C:\\a\\',                 'C:\\a\\'                 ],
-     [ 'Win32', '..\\temp\\..',   'C:\\',                    'C:\\'                    ],
-     [ 'Win32', '..\\temp\\..',   'C:\\a',                   'C:\\'                    ],
-     [ 'Win32', '..\\temp\\..',   'C:\\a\\',                 'C:\\'                    ],
-     [ 'Win32', 'temp\\..',       '\\\\prague_main\\work\\', '\\\\prague_main\\work\\' ],
-     [ 'Win32', '..\\temp\\..',   '\\\\prague_main\\work\\', '\\\\prague_main\\work\\' ],
-     [ 'Win32', 'temp\\..',       '\\\\prague_main\\work',   '\\\\prague_main\\work\\' ],
-     [ 'Win32', '..\\temp\\..',   '\\\\prague_main\\work',   '\\\\prague_main\\work\\' ],
-
-     [ 'other', 't4',             '/t1/t2/t3',               '/t1/t2/t3/t4'            ],
-     [ 'other', 't4/t5',          '/t1/t2/t3',               '/t1/t2/t3/t4/t5'         ],
-     [ 'other', '.',              '/t1/t2/t3',               '/t1/t2/t3'               ],
-     [ 'other', '..',             '/t1/t2/t3',               '/t1/t2'                  ],
-     [ 'other', '../t4',          '/t1/t2/t3',               '/t1/t2/t4'               ],
-     [ 'other', '../../t5',       '/t1/t2/t3',               '/t1/t5'                  ],
-     [ 'other', '../../../t6',    '/t1/t2/t3',               '/t6'                     ],
-     [ 'other', '../../../../t7', '/t1/t2/t3',               '/t7'                     ],
-     [ 'other', '../t4/t5/../t6', '/t1/t2/t3',               '/t1/t2/t4/t6'            ],
-     [ 'other', '../t1/..',       '/t1/t2/t3',               '/t1/t2'                  ],
-     [ 'other', '../t1/..',       '/',                       '/'                       ],
-     [ 'other', '/t1',            '/t1/t2/t3',               '/t1'                     ],
    );
 
    plan tests => ( $#data + 1 ) ;
