@@ -1,0 +1,59 @@
+----------------------------------------------------------------------------
+
+PathConvert module 0.1 for perl version5
+
+					Shigio Yamaguchi	23-Oct-1996
+
+----------------------------------------------------------------------------
+1. Introduction
+
+This module has three subroutines and a sample application.
+
+realpath - make a canonicalized absolute path name
+
+abs2rel - make a relative path from an absolute path
+
+	'/usr/src/bin' and '/usr/local/lib' -> '../../src/bin'
+	(target directory)  (current directory)
+
+rel2abs - make an absolute path from a relative path
+
+	'../../src/bin' and '/usr/local/lib' -> '/usr/src/bin'
+	(target directory)  (current directory)
+
+mkshadow - a sample application of PathConvert module
+
+	This command duplicate directory tree with relative symbolic link.
+
+2. Method for test and install
+
+You need perl version 5.002 or later.
+
+	% perl Makefile.PL
+	% make
+	% make test
+	# make install		<- as a root
+
+3. Files list
+
+README		... this file
+Makefile.PL	... makefile for test and install
+PathConvert.pm	... PathConvert module
+mkshadow	... sample application of PathConvert module
+test.pl		... test script
+MANIFEST	... file list
+
+4. Copyright
+
+Copyright (c) 1996 Shigio Yamaguchi. All rights reserved.
+This program is free software; you can redistribute it and/or
+modify it under the same terms as Perl itself.
+
+
+Please enjoy and report any bugs to <shigio@ca2.so-net.or.jp>.
+Thank you.
+----------------------------------------------------------------------------
+E-Mail: <shigio@ca2.so-net.or.jp>
+Home Page: <http://ux01.so-net.or.jp/~shigio>
+	(You can find the latest version here.)
+----------------------------------------------------------------------------
