@@ -132,5 +132,5 @@ if ($errcount) {
 	close(LOG);
 	exit(1);
 }
-print "COMPLETED\n(no error occured).\n";
+print "COMPLETED.\n";
 exit(0);

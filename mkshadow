@@ -11,7 +11,7 @@
 #	If -p flag is specified, write shell script to stdout
 #	else do the job immediately.
 #
-#	This command is a sample application of module File::PathConvert.
+#	This is a sample application of module File::PathConvert.
 #
 #                               23-Oct-1996 Shigio Yamaguchi
 #

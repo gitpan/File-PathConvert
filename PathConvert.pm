@@ -1,11 +1,11 @@
 #
-# Copyright (c) 1996 Shigio Yamaguchi. All rights reserved.
+# Copyright (c) 1996, 1997 Shigio Yamaguchi. All rights reserved.
 # This program is free software; you can redistribute it and/or
 # modify it under the same terms as Perl itself.
 #
-#	File::PathConvert.pm	version 0.1
+#	File::PathConvert.pm	version 0.2
 #
-#				23-Oct-1996 Shigio Yamaguchi
+#				3-Sep-1997 Shigio Yamaguchi
 #
 package File::PathConvert;
 
@@ -31,7 +31,7 @@ $SL = '/';			# separator
 #			caused the problem.
 	$resolved = '';
 #
-#	Note: this imprementation is based 4.4BSD version realpath(3).
+#	Note: this implementation is based 4.4BSD version realpath(3).
 #
 sub realpath {
     ($resolved) = @_;
@@ -146,7 +146,7 @@ sub abs2rel {
 }
 
 #
-# rel2abs: make a absolute path from an relative path
+# rel2abs: make an absolute path from a relative path
 #
 # Interface:
 #	i)	$path	relative path (needed)
@@ -234,7 +234,7 @@ rel2abs - make an absolute path from a relative path
 
 =head1 SYNOPSIS
 
-C<use File::PathConvert;>
+C<use File::PathConvert qw(realpath abs2rel rel2abs);>
 
 C<$path = realpath($path);>
 
@@ -259,7 +259,7 @@ The C<realpath> resolves all symbolic links, extra ``/''
 characters and references to /./ and /../ in the path.
 The C<realpath> will resolve both absolute and relative paths.
 C<realpath> return resolved name on success else undef and set valiable
-$resolved to pathname which caused the problem.
+$File::PathConvert::resolved to pathname which caused the problem.
 
 All but the last component of the path must exist.
 
@@ -374,6 +374,6 @@ would yield
 
 =head1 AUTHOR
 
-Shigio Yamaguchi <shigio@ca2.so-net.or.jp>
+Shigio Yamaguchi <shigio@wafu.netgate.net>
 
 =cut

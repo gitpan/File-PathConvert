@@ -1,8 +1,8 @@
 ----------------------------------------------------------------------------
 
-PathConvert module 0.1 for perl version5
+PathConvert module 0.2 for perl version5
 
-					Shigio Yamaguchi	23-Oct-1996
+					Shigio Yamaguchi	3-Sep-1997
 
 ----------------------------------------------------------------------------
 1. Introduction
@@ -43,17 +43,43 @@ mkshadow	... sample application of PathConvert module
 test.pl		... test script
 MANIFEST	... file list
 
-4. Copyright
+4. History
 
-Copyright (c) 1996 Shigio Yamaguchi. All rights reserved.
+17-Sep-1996	first RFC on comp.lang.perl.modules.
+		Subject: RFC File::PathConvert module
+		Message-ID: <51m90o$pos@newsgate.so-net.or.jp>
+
+7-Oct-1996	second RFC on comp.lang.perl.modules.
+		Subject: 2nd RFC File::PathConvert module
+		Message-ID: <53a449$2qo@newsgate.so-net.or.jp>
+
+		PathConvert.pm -
+			use @EXPORT_OK instead of @EXPORT.
+			realpath added.
+			use $SL variable for path separator.
+
+23-Oct-1996	version 0.1
+			Tested with perl5.003_02.
+
+3-Sep-1997	version 0.2
+
+		PathConvert.pm
+			- SYNOPSIS fixed.
+			- Tested with perl5.004_02.
+		README	- Mail address changed.
+			- History added.
+
+5. Copyright
+
+Copyright (c) 1996, 1997 Shigio Yamaguchi. All rights reserved.
 This program is free software; you can redistribute it and/or
 modify it under the same terms as Perl itself.
 
 
-Please enjoy and report any bugs to <shigio@ca2.so-net.or.jp>.
+Please enjoy and report any bugs to <shigio@wafu.netgate.net>.
 Thank you.
 ----------------------------------------------------------------------------
-E-Mail: <shigio@ca2.so-net.or.jp>
-Home Page: <http://ux01.so-net.or.jp/~shigio>
+E-Mail: shigio@wafu.netgate.net
+WWW:    http://wafu.netgate.net/tama/indexe.html
 	(You can find the latest version here.)
 ----------------------------------------------------------------------------
